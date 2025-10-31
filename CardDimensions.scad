@@ -18,16 +18,16 @@ wall_thickness = 1.5;
 
 //all parts will be made to the same height.  
 part_height = 6;
-part_thickness = 6;
+part_thickness = 5;
 
 //the diameter of the pin in the scissor lift mechanism
 //this is also the diameter of the holes in the scissor bars
-pin_diameter = part_height/2;
-pin_hole_diameter = (part_height/2)/cos(180/$fn);
+pin_diameter = 1.5;   //part_height/2;
+pin_hole_diameter = 2; //(part_height/2)/cos(180/$fn);
 
 //scissor lift height is twice the part height plus a little extra
 //to allow for some movement
-scissor_lift_gap = part_height + 2;
+scissor_lift_gap = part_height * 2 + wall_thickness + 2 * free_space;
 
 //internal and external dimensions of card box 
 card_box_inside_width = card_width + free_space;
@@ -40,6 +40,12 @@ card_box_corner_radius = card_corner_radius + wall_thickness;
 
 
 //outside dimmesions of the box outside that holds the card box and lift mechanism
+//screws M2  Diameter - hole size 2 mm open hole = 2.2mm threaded hole = 1.75mm head diameter = 3.8mm
+screw_holder_diameter = 4; //2.5;
+carrier_width = card_box_outside_width + 2 * screw_holder_diameter + 2 * wall_thickness;
+carrier_length = card_box_outside_length + 2 * wall_thickness;
+carrier_height = card_box_outside_height + wall_thickness;
+
 box_outside_width = card_box_outside_width + 2 * wall_thickness;
 box_outside_length = card_box_outside_length + 2 * wall_thickness;
 box_outside_height = card_box_outside_height + 2 * wall_thickness;
@@ -54,10 +60,21 @@ base_offset = 4;
 //the scissor is laid flat and when it is fully extended.
 //fully extended is then the card support is at the top of the card box.
 //first calculate the length of the large scissor bar
-large_scissor_bar_length = card_box_inside_length - 2 * base_offset;
+//large_scissor_bar_length = card_box_inside_length - 2 * base_offset;
+large_scissor_bar_length = card_length - 2 * base_offset; //v2
 //the small scissor bar sits inside the large scissor bar so it is shorter by 2 * part_thickness 
 //add the free space to allow for tolerances
-small_scissor_bar_length =card_box_inside_length - 2 * base_offset - 2 * part_thickness - free_space;
+//small_scissor_bar_length = card_box_inside_length - 2 * base_offset - 2 * part_height - free_space;
+small_scissor_bar_length = card_length - 2 * base_offset - 2 * part_height - free_space; //v2
+
+//the width of the scissor bars is the width of the card box minus the side offsets and part thicknesses
+//these widths include the scissor bar thickness  //added additional free space to shorten after printing 
+//large_scissor_bar_width = card_box_inside_width - 2 * (side_offset + part_thickness); //make sure it is even
+large_scissor_bar_width = card_width - 2 * (side_offset + part_thickness); //v2
+//add some extra space to allow for tolerances  //added additional free space to shorten after printing
+//small_scissor_bar_width = card_box_inside_width - 2 * (side_offset + 3 * part_thickness + free_space); //make sure it is even
+small_scissor_bar_width = card_width - 2 * (side_offset + 3 * part_thickness + free_space); //v2
+
 //then calculate the length of the slide holder
 //using pythagorean theorem
 //a^2 + b^2 = c^2
@@ -92,6 +109,10 @@ function get_dimensions() = [
     ["card_box_corner_radius", card_box_corner_radius],
     ["side_offset", side_offset],
     ["base_offset", base_offset],
+    ["screw_holder_diameter", screw_holder_diameter],
+    ["carrier_width", carrier_width],
+    ["carrier_length", carrier_length],
+    ["carrier_height", carrier_height],
     ["box_outside_width", box_outside_width],
     ["box_outside_length", box_outside_length],
     ["box_outside_height", box_outside_height],
@@ -99,5 +120,7 @@ function get_dimensions() = [
     ["large_scissor_bar_length", large_scissor_bar_length],
     ["small_scissor_bar_length", small_scissor_bar_length],
     ["large_scissor_bar_slide_length", large_scissor_bar_slide_length],
-    ["small_scissor_bar_slide_length", small_scissor_bar_slide_length]
+    ["small_scissor_bar_slide_length", small_scissor_bar_slide_length],
+    ["large_scissor_bar_width", large_scissor_bar_width],
+    ["small_scissor_bar_width", small_scissor_bar_width]
 ];

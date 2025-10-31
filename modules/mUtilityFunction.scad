@@ -9,10 +9,3 @@ function dict_lookup(key, table) =
         len(found_item) > 0 ? found_item[0] : undef;
 
 
-module screw_holder(_height,_radius, _radius2 =.5){
-    $fn = 32;
-    difference(){
-        cylinder(_height,r=_radius, true);
-        cylinder(_height,r=_radius2,true);
-    }
-}

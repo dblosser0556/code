@@ -1,8 +1,10 @@
-
+use <../CardDimensions.scad>
 use <mUtilityFunction.scad>
 use <mRoundedCorners.scad>
+include <BOSL2/std.scad> 
 
 $fn = 64;
+/* v2
 module snap_fit_pivot(stem_length=3, stem_radius=1.5, head_length=2 ){
     tip_bulge = 0.25;
     tip_radius = stem_radius * (1 + tip_bulge);
@@ -16,6 +18,34 @@ module snap_fit_pivot(stem_length=3, stem_radius=1.5, head_length=2 ){
         translate([-stem_radius*.2,-tip_radius,0])cube([stem_radius*(2*tip_bulge),tip_radius*2,stem_length+head_length]);
             
     }
+}
+*/
+module square_screw_holder(length,side,hole_diameter){
+    $fn = 32;  
+    difference(){
+        cube([side, side, length], center=false);
+        translate([side/2, side/2, length/2])
+            cylinder(h=length,d=hole_diameter, center=true );
+    }
+}
+
+module screw_holder(height, outside_diameter, hole_diameter){
+    $fn = 32;
+    translate([0,0,height/2])
+    difference(){
+        cylinder(h=height, d=outside_diameter, center = true);
+        cylinder(h=height, d=hole_diameter, center=true);
+    }
+}
+module tappered_screw_head(head_diameter,screw_diameter, depth, taper = 45) {
+    $fn=32;
+    h = tan(taper)*((head_diameter - screw_diameter)/2);
+    rotate([180,0,0])  //flip so the head is on top
+    union(){
+        cylinder(h=h,d1=head_diameter,d2=screw_diameter);
+        cylinder(h=depth,d=screw_diameter);    
+    }
+    
 }
 
 //functions to buld the outside box and cutouts
@@ -36,103 +66,78 @@ module thumb_hole(dimensions){
     }
 }
 
-module card_holder_cutout(dimensions){
-    cube([dict_lookup("card_box_outside_width",dimensions),dict_lookup("wall_thickness",dimensions)*4,dict_lookup("card_box_outside_height",dimensions)]);
-}
 
-module card_holder_pushout_hole(dimensions){
-    rotate([90,0,0])cylinder(dict_lookup("wall_thickness",dimensions)*4, r = dict_lookup("box_outside_height",dimensions)/4);
-}
-
-module card_deal_slot(dimensions) {
-    cube([dict_lookup("card_box_outside_width",dimensions),dict_lookup("card_corner_radius",dimensions) * 2,dict_lookup("card_thickness",dimensions) * 1.5],false);
-}
-
-module outside_box(dimensions) {
-    box_outside_width = dict_lookup("box_outside_width",dimensions);
-    box_outside_length = dict_lookup("box_outside_length",dimensions);
-    box_outside_height = dict_lookup("box_outside_height",dimensions);
-    wall_thickness = dict_lookup("wall_thickness",dimensions);
-
-    union() {
-        cube([box_outside_width, box_outside_length, box_outside_height]);
- 
-        //add screw - nudge out so full opening can be had for card holder
-       screw_holder_radius = 2;
-       nudge = screw_holder_radius - wall_thickness; 
-       translate([box_outside_width + nudge, box_outside_length + nudge,0])screw_holder(box_outside_height,screw_holder_radius);
-       translate([box_outside_width + nudge,-(nudge),0])screw_holder(box_outside_height,screw_holder_radius);
-       translate([-(nudge),box_outside_length + nudge,0])screw_holder(box_outside_height,screw_holder_radius);
-       translate([-(nudge),-(nudge),0])screw_holder(box_outside_height,screw_holder_radius);
-    }
-}
-
-module build_outside_box(dimensions) {
-
-    box_outside_width = dict_lookup("box_outside_width",dimensions);
-    box_outside_length = dict_lookup("box_outside_length",dimensions);
-    box_outside_height = dict_lookup("box_outside_height",dimensions);
-    wall_thickness = dict_lookup("wall_thickness",dimensions);
-    card_thickness = dict_lookup("card_thickness",dimensions);
-
-    difference(){
-        outside_box(dimensions);
-        translate([wall_thickness,wall_thickness,wall_thickness])card_holder_space(dimensions);
-        translate([box_outside_width/8*3,box_outside_length/4,box_outside_height-wall_thickness*2])thumb_hole(dimensions);
-        translate([wall_thickness,box_outside_length-wall_thickness,wall_thickness])card_holder_cutout(dimensions);
-        translate([box_outside_width/2,wall_thickness,box_outside_height/2])card_holder_pushout_hole(dimensions);
-        translate([wall_thickness,0,box_outside_height-wall_thickness - card_thickness*1.5])card_deal_slot(dimensions);
-    }
-
-}
 //modules to build the card box, card deck, and holddowns for the lift mechanism
 //create the base holder 
-module base_holder(dimensions){
+module base_holder(dimensions, fillet, taper){
     part_height = dict_lookup("part_height",dimensions);
     part_thickness = dict_lookup("part_thickness",dimensions);
     free_space = dict_lookup("free_space",dimensions);
+    pin_hole_diameter = dict_lookup("pin_hole_diameter", dimensions);
 
-    pin_diameter = part_height/2;
+    taper =  (taper == undef) ? 0 : taper; //default taper
+    
+
     difference(){
         union(){
             cube([part_thickness, part_height, free_space]);
             translate([0,0,free_space])cube([part_thickness, part_height, part_height/2]);
             translate([0, part_height/2, part_height/2 + free_space ])rotate([0,90,0])cylinder(part_thickness,d=part_height);
         }
-        translate([0, part_height/2, part_height/2 + free_space ])rotate([0,90,0])cylinder(part_thickness,d=pin_diameter);
+        translate([0,part_height/2,part_height/2 + free_space])
+          rotate([0,90,0])cylinder(d1=pin_hole_diameter,d2 = pin_hole_diameter - taper * pin_hole_diameter, h=part_thickness );       
     }
+    
+    if (fillet == true) {
+        translate([0,-part_height/2,0])zrot(a=180,cp=[0,part_height/2,0])fillet(l=part_height, d = pin_hole_diameter, orient=FORWARD);
+        translate([part_thickness,part_height/2,0])fillet(l=part_height, d = pin_hole_diameter, orient=FORWARD);
+        translate([part_thickness/2,0,0])zrot(a=270,cp=[0,0,1])fillet(l=part_thickness, d = pin_hole_diameter, orient=FRONT);
+        translate([part_thickness/2,part_height,0])zrot(a=90,cp=[0,0,1])fillet(l=part_thickness, d = pin_hole_diameter, orient=FRONT);
+    }//translate([-part_thickness/2,0,0])fillet(l=part_height, d = pin_hole_diameter, orient=RIGHT);
 }
 
 
 //slide holder
-module slide_holder(dimensions, type){
+module slide_holder(dimensions, type, hole_side){
     part_height = dict_lookup("part_height",dimensions);
     part_thickness = dict_lookup("part_thickness",dimensions);
     free_space = dict_lookup("free_space",dimensions);
-    pin_diameter = dict_lookup("pin_diameter",dimensions);
+    pin_hole_diameter = dict_lookup("pin_hole_diameter",dimensions);
 
     //determine the length of the slide holder based on the type
     slide_holder_length = (type == "large") ? dict_lookup("large_scissor_bar_slide_length",dimensions) : dict_lookup("small_scissor_bar_slide_length",dimensions);
- 
+    
     difference(){
         union(){
-            cube([part_thickness, slide_holder_length + part_height, free_space + part_height/2]);
+            cube([part_thickness, slide_holder_length, free_space + part_height/2]);
             translate([0,0,free_space])
             union(){
             translate([0,part_height/2,part_height/2])rotate([0,90,0])cylinder(part_thickness,d=part_height);
-            translate([0,part_height/2,0])cube([part_thickness, slide_holder_length, part_height]);
-            translate([0,part_height/2 + slide_holder_length,part_height/2])rotate([0,90,0])cylinder(part_thickness,d=part_height);
+            translate([0,part_height/2,0])cube([part_thickness, slide_holder_length - part_height, part_height]);
+            translate([0,part_height/2 + slide_holder_length - part_height, part_height/2])rotate([0,90,0])cylinder(part_thickness,d=part_height);
             }
         }
-        translate([0,0,free_space])
+        translate([0,0,free_space])  //v2
         union(){
-            translate([0, part_height/2, part_height/2])rotate([0,90,0])cylinder(part_thickness,d=pin_diameter);
-            translate([0,part_height/2,(part_height-pin_diameter)/2])cube([part_thickness, slide_holder_length, pin_diameter]);
-            translate([0,part_height/2 + slide_holder_length, part_height/2])rotate([0,90,0])cylinder(part_thickness,d=pin_diameter);
-        }
+            translate([0, part_height/2, part_height/2])rotate([0,90,0])cylinder(part_thickness,d=pin_hole_diameter);
+            translate([0,part_height/2,(part_height-pin_hole_diameter)/2])cube([part_thickness, slide_holder_length - part_height, pin_hole_diameter]);
+            translate([0,slide_holder_length - part_height/2, part_height/2])rotate([0,90,0])cylinder(part_thickness,d=pin_hole_diameter);
+        } 
+        /*x = (hole_side == "left") ? 0 : part_thickness;  //removed v2
+        translate([x,part_height/2,free_space])
+        #union(){
+            translate([0, 0, part_height/2])sphere(d=pin_hole_diameter);
+            translate([0, slide_holder_length - part_height, part_height/2])rot(a=90,v=[1,0,0])cylinder(slide_holder_length - part_height, d = pin_hole_diameter);
+            translate([0, slide_holder_length - part_height, part_height/2])sphere(d=pin_hole_diameter);
+        } */
     }
-}
+    translate([0,-slide_holder_length/2,0])zrot(a=180,cp=[0,slide_holder_length/2,0])fillet(l=slide_holder_length, d = pin_hole_diameter, orient=FORWARD);
+    translate([part_thickness,slide_holder_length/2,0])fillet(l=slide_holder_length, d = pin_hole_diameter, orient=FORWARD);
+    
+  
 
+}
+/*
 module card_box_outside_box(dimensions) {
     card_box_corner_radius = dict_lookup("card_box_corner_radius",dimensions);
     card_box_outside_width = dict_lookup("card_box_outside_width",dimensions);
@@ -151,25 +156,25 @@ module card_deck_space(dimensions) {
     //create the space for the card deck
     roundedcube([card_box_inside_width, card_box_inside_length, card_box_inside_height], false, card_corner_radius,"z");
 }
-
+*/
 module card_hole(dimensions) {
     cube([dict_lookup("card_width",dimensions),dict_lookup("card_corner_radius", dimensions) * 2,dict_lookup("card_thickness",dimensions)],false);
 }
 
 //modules call be the scissor lift parts
 module hook(dimensions){
-    pin_diameter = dict_lookup("pin_diameter",dimensions);
+    pin_hole_diameter = dict_lookup("pin_hole_diameter",dimensions);
     part_height = dict_lookup("part_height",dimensions);
     part_thickness = dict_lookup("part_thickness",dimensions);
     free_space = dict_lookup("free_space",dimensions);
 
     difference(){
-        base_holder(dimensions);
-        translate([0, part_height/2, part_height/4 + free_space ])cube([part_thickness, part_height, pin_diameter]);
+        base_holder(dimensions, false);
+        translate([0, part_height/2, part_height/4 + free_space + .25])cube([part_thickness, part_height, pin_hole_diameter - .5]);
     }
 }
 
-
+/* removed v2
 module scissor_end(dimensions, type, free_space){
     pin_diameter = dict_lookup("pin_diameter",dimensions);
     pin_hole_diameter = dict_lookup("pin_hole_diameter",dimensions);
@@ -202,51 +207,36 @@ module scissor_end(dimensions, type, free_space){
      if (type == "rounded_joiner"){
         union(){
             translate([0,0,part_height/2])rotate([0,90,0])cylinder(part_thickness,d=part_height);
-            translate([part_thickness,0,part_height/2])cylinder(free_space,d=pin_diameter);
-            translate([part_thickness + free_space,0,part_height/2])sphere(d=pin_diameter);
+            //make the pin a little smaller than full width to give some slack
+            translate([part_thickness - pin_diameter/8,0,part_height/2])sphere(d=pin_diameter);
         }
     }
 
 }
-
-module scissor_bar(dimensions, scissor_bar_length, type=[1,3,2]){
+*/
+module scissor_bar(dimensions, scissor_bar_length){
     //get the dimensions values
    
     part_height = dict_lookup("part_height",dimensions);
     part_thickness = dict_lookup("part_thickness",dimensions);
     free_space = dict_lookup("free_space",dimensions);
-    
-    union(){
-         difference(){
+    pin_hole_diameter = dict_lookup("pin_hole_diameter",dimensions);
+    difference(){
+         union(){
             //we add .5 part height to each end so the length of the cube needs to be shortened by one part height
+            translate([0,part_height/2,part_height/2])rotate([0,90,0])cylinder(part_thickness,d=part_height);
             translate([0,part_height/2,0])cube([part_thickness,scissor_bar_length-part_height, part_height]);
-            //cut the holes for the ends.  undercut a little so they fit better
-            translate([0,part_height/2,part_height/2])rotate([0,90,0])cylinder(part_thickness,d=part_height-.05);
-            translate([0,scissor_bar_length/2,part_height/2])rotate([0,90,0])cylinder(part_thickness,d=part_height-.05);
-            translate([0,scissor_bar_length - part_height/2, part_height/2])rotate([0,90,0])cylinder(part_thickness,d=part_height-.05);
-        }
-        //cylinders alway work around thier center so the add material to both sides of thier center
-        //scissor_bar_length is the total length including the the two half circles on the end
-        //add the 2 ends and the middle types of joints
-        translate([0,part_height/2,0]){
-            if (type[0] == 1) scissor_end(dimensions,"pivot");
-            if (type[0] == 2) scissor_end(dimensions,"joiner");
-            if (type[0] == 3) scissor_end(dimensions,"open");
-            if (type[0] == 4) scissor_end(dimensions,"rounded_joiner");
-        }
-        translate([0,scissor_bar_length/2,0]){
-            if (type[1] == 1) scissor_end(dimensions,"pivot");
-            if (type[1] == 2) scissor_end(dimensions,"joiner");
-            if (type[1] == 3) scissor_end(dimensions,"open");
-            if (type[1] == 4) scissor_end(dimensions,"rounded_joiner");
-            }
-        translate([0,scissor_bar_length-part_height/2,0]){
-            if (type[2] == 1) scissor_end(dimensions,"pivot");
-            if (type[2] == 2) scissor_end(dimensions,"joiner");
-            if (type[2] == 3) scissor_end(dimensions,"open");
-            if (type[2] == 4) scissor_end(dimensions,"rounded_joiner");
-            }
+            translate([0,scissor_bar_length - part_height/2, part_height/2])rotate([0,90,0])cylinder(part_thickness,d=part_height);           
+         }
+        
+       
        
 
     }
 }
+
+//test code
+//tappered_screw_head(6,3,6);
+//square_screw_holder(10,4,1.5);
+//screw_holder(10,4,1.25);
+base_holder(get_dimensions(), true, .2);
